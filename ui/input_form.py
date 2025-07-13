@@ -4,7 +4,8 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton,
     QMessageBox, QFileDialog, QHBoxLayout, QComboBox
 )
-from engine_dynamics import calculations, plotting, utils, interactive_plot
+from engine_dynamics import calculations
+from reporting import plotting, interactive_plot, save_io as utils
 
 
 class InputForm(QWidget):
