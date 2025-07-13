@@ -6,6 +6,7 @@ DEG = np.pi / 180
 
 
 def calculate_engine_dynamics(params):
+    params = {k: float(v) for k, v in params.items()}
     D = params['D']
     S = params['S']
     eps = params['eps']
@@ -101,15 +102,19 @@ def calculate_engine_dynamics(params):
     V_rr = np.array([Va, Vc])
     P_rr = np.array([Pr, Pr_prime])
 
-    # Результаты (пример: работа, КПД и пр.)
     A_cycle = np.trapz(P_sum, x=V_alpha)
     Q_in = (Pz - Pc) * Vc + Pz * (Vz_ - Vz)
     eta = A_cycle / Q_in if Q_in else 0
 
     results = {
-        "Работа за цикл (Дж)": round(A_cycle, 3),
-        "Подвод тепла Qвх (Дж)": round(Q_in, 3),
-        "КПД (η)": round(eta * 100, 2)
+        "phi_deg": phi_deg,
+        "Pb": Pb,
+        "Pz": Pz,
+        "Pg_avg": np.mean(Pg),
+        "V_alpha_avg": np.mean(V_alpha),
+        "A_cycle": A_cycle,
+        "Q_in": Q_in,
+        "eta": eta
     }
 
     data = {
@@ -134,7 +139,24 @@ def calculate_engine_dynamics(params):
         "P_iso_rej": P_iso_rej,
         "V_rr": V_rr,
         "P_rr": P_rr,
-        "Pr": Pr
+        "Pa": Pa,
+        "Pr": Pr,
+        "Pc": Pc,
+        "Pz": Pz,
+        "Pz_": Pz_,
+        "Pb": Pb,
+        "Vc": Vc,
+        "Va": Va,
+        "Vz": Vz,
+        "Vz_": Vz_,
+        "F_p": F_p,
+        "n1": n1,
+        "n2": n2,
+        "eps": eps,
+        "lam": lam,
+        "lam_z": lam_z,
+        "rho": rho,
+        "n_rpm": n_rpm
     }
 
     return results, data

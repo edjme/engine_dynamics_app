@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
 )
 from engine_dynamics import calculations, plotting, utils, interactive_plot
 
+
 class InputForm(QWidget):
     def __init__(self):
         super().__init__()
@@ -73,10 +74,16 @@ class InputForm(QWidget):
         QMessageBox.information(self, "Готово", "Расчёт завершён.")
 
     def show_graph(self):
-        if self.data:
-            plotting.plot_graph(self.data)
-        else:
-            QMessageBox.warning(self, "Внимание", "Сначала выполните расчёт.")
+        if not hasattr(self, "data") or not self.data:
+            QMessageBox.warning(self, "Ошибка", "Сначала выполните расчёт.")
+            return
+
+        if "Pa" not in self.data:
+            QMessageBox.warning(
+                self, "Ошибка", "Отсутствуют данные для построения графика.")
+            return
+
+        plotting.plot_graph(self.data)
 
     def save_report(self):
         if self.results and self.data:
