@@ -61,15 +61,24 @@ class InputForm(QWidget):
             return None
 
     def calculate(self):
+        import datetime
+        from pathlib import Path
+
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        output_dir = Path("output") / timestamp
+        output_dir.mkdir(parents=True, exist_ok=True)
+
         params = self.get_params()
         if params is None:
             return
 
-        self.results, self.data = calculations.calculate_engine_dynamics(params)
+        self.results, self.data = calculations.calculate_engine_dynamics(
+            params)
 
-        utils.save_input_data(params)
-        utils.save_results(self.results)
-        interactive_plot.plot_interactive(self.data, output_dir="output")
+        utils.save_input_data(params, output_dir)
+        utils.save_results(self.results, output_dir)
+        interactive_plot.plot_interactive(self.data, output_dir=output_dir)
+        self.output_dir = output_dir
 
         QMessageBox.information(self, "Готово", "Расчёт завершён.")
 
