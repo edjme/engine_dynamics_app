@@ -1,45 +1,62 @@
+# reporting/interactive_plot.py
+import matplotlib
+# переключаемся на Qt-бэкенд для интерактивного показа
+matplotlib.use("Qt5Agg")  
 
-import plotly.graph_objs as go
-from plotly.subplots import make_subplots
-import os
+import matplotlib.pyplot as plt
+import numpy as np
 
-def plot_interactive(data: dict, output_dir="output"):
-    fig = make_subplots(
-        rows=3, cols=2,
-        subplot_titles=(
-            "P-V диаграмма", "Pg(α)",
-            "Pg, Pj, PΣ", "Силы N и K",
-            "Силы Z и T", "Резерв"
-        )
-    )
+def plot_interactive(data):
+    """
+    Рисует интерактивное окно (Matplotlib) по данным расчёта.
+    data — словарь с массивами numpy: alpha_deg, Pg, Pj, P_sum, N, K, Z, T
+    """
+    alpha = data.get("alpha_deg")
+    Pg    = data.get("Pg")
+    Pj    = data.get("Pj")
+    P_sum = data.get("P_sum")
+    N     = data.get("N")
+    K     = data.get("K")
+    Z     = data.get("Z")
+    T     = data.get("T")
 
-    # (0) P-V диаграмма
-    fig.add_trace(go.Scatter(x=data["V_comp"]*1e6, y=data["P_comp"]/1e6, name="Сжатие"), row=1, col=1)
-    fig.add_trace(go.Scatter(x=data["V_iso_add"]*1e6, y=data["P_iso_add"]/1e6, name="Изохора +Q"), row=1, col=1)
-    fig.add_trace(go.Scatter(x=data["V_iso_bar_V"]*1e6, y=data["P_iso_bar_P"]/1e6, name="Изобара +Q"), row=1, col=1)
-    fig.add_trace(go.Scatter(x=data["V_exp"]*1e6, y=data["P_exp"]/1e6, name="Расширение"), row=1, col=1)
-    fig.add_trace(go.Scatter(x=data["V_iso_rej"]*1e6, y=data["P_iso_rej"]/1e6, name="Изохора –Q"), row=1, col=1)
-    fig.add_trace(go.Scatter(x=data["V_rr"]*1e6, y=data["P_rr"]/1e6, name="Выпуск P_rr"), row=1, col=1)
-    fig.add_trace(go.Scatter(x=data["V_rr"]*1e6, y=[data["Pr"]/1e6]*2, name="Полка Pr"), row=1, col=1)
+    fig, axes = plt.subplots(3, 2, figsize=(10, 8))
+    ax = axes.flatten()
 
-    # (1) Pg(α)
-    fig.add_trace(go.Scatter(x=data["alpha_deg"], y=data["Pg"]/1e6, name="Pg(α)"), row=1, col=2)
+    # Pg vs α
+    if alpha is not None and Pg is not None:
+        ax[0].plot(alpha, Pg, label="Pg")
+        ax[0].set_title("Давление газов Pg(α)")
+        ax[0].legend()
 
-    # (2) Pg, Pj, PΣ
-    fig.add_trace(go.Scatter(x=data["alpha_deg"], y=data["P_sum"]/1e6, name="PΣ"), row=2, col=1)
-    fig.add_trace(go.Scatter(x=data["alpha_deg"], y=data["Pj"]/1e6, name="Pj"), row=2, col=1)
-    fig.add_trace(go.Scatter(x=data["alpha_deg"], y=data["Pg"]/1e6, name="Pg"), row=2, col=1)
+    # Pj vs α
+    if alpha is not None and Pj is not None:
+        ax[1].plot(alpha, Pj, label="Pj", color="orange")
+        ax[1].set_title("Инерционное давление Pj(α)")
+        ax[1].legend()
 
-    # (3) Силы N, K
-    fig.add_trace(go.Scatter(x=data["alpha_deg"], y=data["N"], name="N"), row=2, col=2)
-    fig.add_trace(go.Scatter(x=data["alpha_deg"], y=data["K"], name="K"), row=2, col=2)
+    # P_sum vs α
+    if alpha is not None and P_sum is not None:
+        ax[2].plot(alpha, P_sum, label="P_sum", color="green")
+        ax[2].set_title("Суммарное давление")
+        ax[2].legend()
 
-    # (4) Силы Z, T
-    fig.add_trace(go.Scatter(x=data["alpha_deg"], y=data["Z"], name="Z"), row=3, col=1)
-    fig.add_trace(go.Scatter(x=data["alpha_deg"], y=data["T"], name="T"), row=3, col=1)
+    # Силы N и K
+    if alpha is not None and N is not None and K is not None:
+        ax[3].plot(alpha, N, label="N")
+        ax[3].plot(alpha, K, label="K")
+        ax[3].set_title("Силы N и K")
+        ax[3].legend()
 
-    fig.update_layout(height=900, width=1200, title_text="Интерактивные графики двигателя")
+    # Силы Z и T
+    if alpha is not None and Z is not None and T is not None:
+        ax[4].plot(alpha, Z, label="Z")
+        ax[4].plot(alpha, T, label="T")
+        ax[4].set_title("Силы Z и T")
+        ax[4].legend()
 
-    os.makedirs(output_dir, exist_ok=True)
-    html_path = os.path.join(output_dir, "interactive_graphs.html")
-    fig.write_html(html_path, auto_open=True)
+    # Последний график оставляем пустым
+    ax[5].axis("off")
+
+    plt.tight_layout()
+    plt.show()

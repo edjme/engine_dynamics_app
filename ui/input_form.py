@@ -1,104 +1,121 @@
-
-import os
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton,
-    QMessageBox, QFileDialog, QHBoxLayout, QComboBox
+    QFormLayout, QMessageBox
 )
 from engine_dynamics import calculations
-from reporting import plotting, interactive_plot, save_io as utils
+# from reporting import report
+from pathlib import Path
+from datetime import datetime
+from reporting.interactive_plot import plot_interactive
+from reporting.report import create_pdf_report
+
+
 
 
 class InputForm(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Engine Dynamics Calculator")
+        self.setWindowTitle("Расчёт динамики двигателя")
 
+        # --- Параметры формы с дефолтами ---
+        self.layout = QVBoxLayout()
+        form = QFormLayout()
         self.inputs = {}
-        self.layout = QVBoxLayout(self)
 
-        self.default_params = {
-            'D': '0.16', 'S': '0.14', 'eps': '17',
-            'n_rpm': '1700', 'Pr': '110000', 'Pa': '90000',
-            'n1': '1.38', 'n2': '1.22', 'lam': '0.333',
-            'lam_z': '2', 'rho': '1.4', 'm_pd': '330', 'm_sh': '330'
+        defaults = {
+            "D": "0.16",
+            "S": "0.14",
+            "eps": "17",
+            "n_rpm": "1700",
+            "Pr": "110000",
+            "Pa": "90000",
+            "n1": "1.38",
+            "n2": "1.22",
+            "lam": "0.333",
+            "lam_z": "2",
+            "rho": "1.4",
+            "m_pd": "330",
+            "m_sh": "330"
+        }
+        labels = {
+            "D": "Диаметр цилиндра (D), м",
+            "S": "Ход поршня (S), м",
+            "eps": "Степень сжатия (ε)",
+            "n_rpm": "Частота вращения (n), об/мин",
+            "Pr": "Давление в конце расширения (Pr), Па",
+            "Pa": "Начальное давление (Pa), Па",
+            "n1": "Показатель политропы сжатия (n1)",
+            "n2": "Показатель политропы расширения (n2)",
+            "lam": "λ = R/L",
+            "lam_z": "λ_z",
+            "rho": "ρ = Vz/Vz_",
+            "m_pd": "Масса поршня (кг)",
+            "m_sh": "Масса шатуна (кг)",
         }
 
-        for key, value in self.default_params.items():
-            label = QLabel(f"{key}:")
-            input_field = QLineEdit(value)
-            self.inputs[key] = input_field
-            self.layout.addWidget(label)
-            self.layout.addWidget(input_field)
+        for key in labels:
+            w = QLineEdit()
+            w.setText(defaults[key])
+            self.inputs[key] = w
+            form.addRow(QLabel(labels[key]), w)
 
-        button_layout = QHBoxLayout()
+        self.layout.addLayout(form)
 
-        calc_btn = QPushButton("Рассчитать")
-        calc_btn.clicked.connect(self.calculate)
-        button_layout.addWidget(calc_btn)
+        # --- Кнопки ---
+        btn_calc = QPushButton("Рассчитать")
+        btn_calc.clicked.connect(self.calculate)
+        self.layout.addWidget(btn_calc)
 
-        graph_btn = QPushButton("Графики")
-        graph_btn.clicked.connect(self.show_graph)
-        button_layout.addWidget(graph_btn)
+        btn_graph = QPushButton("Графики")
+        btn_graph.clicked.connect(self.show_graph)
+        self.layout.addWidget(btn_graph)
 
-        report_btn = QPushButton("Сохранить отчёт (PDF)")
-        report_btn.clicked.connect(self.save_report)
-        button_layout.addWidget(report_btn)
-
-        self.layout.addLayout(button_layout)
-
-        # Preset combobox (на будущее)
-        self.preset_combo = QComboBox()
-        self.layout.addWidget(QLabel("Выбор шаблона:"))
-        self.layout.addWidget(self.preset_combo)
-
+        self.setLayout(self.layout)
         self.results = None
         self.data = None
+        self.output_dir = None
 
     def get_params(self):
+        params = {}
         try:
-            return {k: float(field.text()) for k, field in self.inputs.items()}
+            for k, w in self.inputs.items():
+                params[k] = float(w.text())
         except ValueError:
-            QMessageBox.critical(self, "Ошибка", "Проверьте ввод чисел.")
+            QMessageBox.warning(
+                self, "Ошибка", "Введите все параметры корректно.")
             return None
+        return params
 
     def calculate(self):
-        import datetime
-        from pathlib import Path
-
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        output_dir = Path("output") / timestamp
-        output_dir.mkdir(parents=True, exist_ok=True)
-
         params = self.get_params()
         if params is None:
             return
 
+        # --- расчёт ---
         self.results, self.data = calculations.calculate_engine_dynamics(
             params)
 
-        utils.save_input_data(params, output_dir)
-        utils.save_results(self.results, output_dir)
-        interactive_plot.plot_interactive(self.data, output_dir=output_dir)
-        self.output_dir = output_dir
+        # --- создаём папку с меткой ---
+        stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        self.output_dir = Path("output") / stamp
+        self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        QMessageBox.information(self, "Готово", "Расчёт завершён.")
+        # --- генерируем PDF автоматически ---
+        # передаём в отчёт и входные, и выходные данные
+        create_pdf_report({**params, **self.results, **self.data},
+                                 self.output_dir / "report.pdf")
+
+        QMessageBox.information(
+            self, "Готово",
+            f"Расчёт завершён и PDF сохранён в:\n{self.output_dir}"
+        )
 
     def show_graph(self):
-        if not hasattr(self, "data") or not self.data:
+        if self.data is None:
             QMessageBox.warning(self, "Ошибка", "Сначала выполните расчёт.")
             return
-
-        if "Pa" not in self.data:
-            QMessageBox.warning(
-                self, "Ошибка", "Отсутствуют данные для построения графика.")
-            return
-
-        plotting.plot_graph(self.data)
-
-    def save_report(self):
-        if self.results and self.data:
-            params = self.get_params()
-            utils.generate_pdf_report(params, self.results)
-            QMessageBox.information(self, "Сохранено", "PDF отчёт создан.")
-        else:
-            QMessageBox.warning(self, "Ошибка", "Сначала выполните расчёт.")
+        try:
+            from reporting import interactive_plot
+            interactive_plot.plot_interactive(self.data)
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка графиков", str(e))
