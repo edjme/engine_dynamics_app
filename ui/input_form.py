@@ -3,13 +3,10 @@ from PySide6.QtWidgets import (
     QFormLayout, QMessageBox
 )
 from engine_dynamics import calculations
-# from reporting import report
 from pathlib import Path
 from datetime import datetime
 from reporting.interactive_plot import plot_interactive
 from reporting.report import create_pdf_report
-
-
 
 
 class InputForm(QWidget):
@@ -91,23 +88,23 @@ class InputForm(QWidget):
         if params is None:
             return
 
-        # --- расчёт ---
         self.results, self.data = calculations.calculate_engine_dynamics(
             params)
 
-        # --- создаём папку с меткой ---
         stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         self.output_dir = Path("output") / stamp
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        # --- генерируем PDF автоматически ---
-        # передаём в отчёт и входные, и выходные данные
         create_pdf_report({**params, **self.results, **self.data},
-                                 self.output_dir / "report.pdf")
+                          self.output_dir / "report.pdf")
+
+        # Сохраняем интерактивные графики в HTML
+        plot_interactive(self.data, self.output_dir /
+                         "interactive_graphs.html")
 
         QMessageBox.information(
             self, "Готово",
-            f"Расчёт завершён и PDF сохранён в:\n{self.output_dir}"
+            f"Расчёт завершён. PDF и интерактивные графики сохранены в:\n{self.output_dir}"
         )
 
     def show_graph(self):

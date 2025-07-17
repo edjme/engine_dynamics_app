@@ -1,62 +1,39 @@
-# reporting/interactive_plot.py
-import matplotlib
-# переключаемся на Qt-бэкенд для интерактивного показа
-matplotlib.use("Qt5Agg")  
+from plotly.subplots import make_subplots
+import plotly.graph_objs as go
+from plotly.offline import plot
 
-import matplotlib.pyplot as plt
-import numpy as np
 
-def plot_interactive(data):
-    """
-    Рисует интерактивное окно (Matplotlib) по данным расчёта.
-    data — словарь с массивами numpy: alpha_deg, Pg, Pj, P_sum, N, K, Z, T
-    """
+def plot_interactive(data, output_path=None):
     alpha = data.get("alpha_deg")
-    Pg    = data.get("Pg")
-    Pj    = data.get("Pj")
+    Pg = data.get("Pg")
+    Pj = data.get("Pj")
     P_sum = data.get("P_sum")
-    N     = data.get("N")
-    K     = data.get("K")
-    Z     = data.get("Z")
-    T     = data.get("T")
+    N = data.get("N")
+    K = data.get("K")
+    Z = data.get("Z")
+    T = data.get("T")
 
-    fig, axes = plt.subplots(3, 2, figsize=(10, 8))
-    ax = axes.flatten()
+    fig = make_subplots(rows=3, cols=2, subplot_titles=[
+        "Pg(α)", "Pj(α)", "P_sum(α)", "N & K", "Z & T", ""])
 
-    # Pg vs α
     if alpha is not None and Pg is not None:
-        ax[0].plot(alpha, Pg, label="Pg")
-        ax[0].set_title("Давление газов Pg(α)")
-        ax[0].legend()
-
-    # Pj vs α
+        fig.add_trace(go.Scatter(x=alpha, y=Pg, name="Pg"), row=1, col=1)
     if alpha is not None and Pj is not None:
-        ax[1].plot(alpha, Pj, label="Pj", color="orange")
-        ax[1].set_title("Инерционное давление Pj(α)")
-        ax[1].legend()
-
-    # P_sum vs α
+        fig.add_trace(go.Scatter(x=alpha, y=Pj, name="Pj"), row=1, col=2)
     if alpha is not None and P_sum is not None:
-        ax[2].plot(alpha, P_sum, label="P_sum", color="green")
-        ax[2].set_title("Суммарное давление")
-        ax[2].legend()
-
-    # Силы N и K
+        fig.add_trace(go.Scatter(x=alpha, y=P_sum, name="P_sum"), row=2, col=1)
     if alpha is not None and N is not None and K is not None:
-        ax[3].plot(alpha, N, label="N")
-        ax[3].plot(alpha, K, label="K")
-        ax[3].set_title("Силы N и K")
-        ax[3].legend()
-
-    # Силы Z и T
+        fig.add_trace(go.Scatter(x=alpha, y=N, name="N"), row=2, col=2)
+        fig.add_trace(go.Scatter(x=alpha, y=K, name="K"), row=2, col=2)
     if alpha is not None and Z is not None and T is not None:
-        ax[4].plot(alpha, Z, label="Z")
-        ax[4].plot(alpha, T, label="T")
-        ax[4].set_title("Силы Z и T")
-        ax[4].legend()
+        fig.add_trace(go.Scatter(x=alpha, y=Z, name="Z"), row=3, col=1)
+        fig.add_trace(go.Scatter(x=alpha, y=T, name="T"), row=3, col=1)
 
-    # Последний график оставляем пустым
-    ax[5].axis("off")
+    fig.update_layout(height=800, width=1000,
+                      title_text="Интерактивные графики")
 
-    plt.tight_layout()
-    plt.show()
+    # если путь указан — сохраняем
+    if output_path:
+        plot(fig, filename=str(output_path), auto_open=False)
+    else:
+        fig.show()
